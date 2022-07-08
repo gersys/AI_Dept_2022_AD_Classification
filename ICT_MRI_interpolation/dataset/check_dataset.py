@@ -71,7 +71,7 @@ def aa():
 # the code for dataset sanity check
 
 if __name__=="__main__":
-    
+    num_of_label_check()
     
     
     
