@@ -14,22 +14,22 @@ from tqdm import tqdm
 
 
 def num_of_label_check():
+    
+    print("check the number of pet_pos_ad & pet_neg_nc")
+    
     df=pd.read_excel("../labels/220420_th_with_demo.xlsx", engine='openpyxl')
     
     pos_add=[]
     neg_nc=[]
-    for code, pet , label in tqdm(zip(df['nuc_t1_inServer'],df["PET"],df['label'])):
+    for code, pet , label in zip(tqdm(df['nuc_t1_inServer']),df["PET"],df['label']):
         if pet == 1 and label == "ADD":
             pos_add.append(code.split(".")[0])
         elif pet == 0 and label == "NC":
             neg_nc.append(code.split(".")[0])
             
-    
-    num_pos_add=0
-    num_neg_nc=0
-    
-    print(pos_add)
-    print(pos_add.index("IDEA_052_120429_nuc_t1"))
+
+    print(f"num of pet pos ad : {len(pos_add)}")
+    print(f"num of pet neg nc : {len(neg_nc)}")
     
     
     exit()
