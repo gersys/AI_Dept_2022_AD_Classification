@@ -4,6 +4,7 @@ import shutil
 import csv
 from turtle import pos
 import pandas as pd
+from tqdm import tqdm
 
 
 
@@ -17,7 +18,7 @@ def num_of_label_check():
     
     pos_add=[]
     neg_nc=[]
-    for code, pet , label in zip(df['nuc_t1_inServer'],df["PET"],df['label']):
+    for code, pet , label in tqdm(zip(df['nuc_t1_inServer'],df["PET"],df['label'])):
         if pet == 1 and label == "ADD":
             pos_add.append(code.split(".")[0])
         elif pet == 0 and label == "NC":
