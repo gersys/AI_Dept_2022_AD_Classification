@@ -13,7 +13,7 @@ import pandas as pd
 
 
 def num_of_label_check():
-    df=pd.read_excel("./labels/220420_th_with_demo.xlsx", engine='openpyxl')
+    df=pd.read_excel("../labels/220420_th_with_demo.xlsx", engine='openpyxl')
     
     pos_add=[]
     neg_nc=[]
