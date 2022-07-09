@@ -19,6 +19,7 @@ def num_of_label_check():
     
     df=pd.read_excel("../labels/220420_th_with_demo.xlsx", engine='openpyxl')
     
+    
     pos_add=[]
     neg_nc=[]
     for code, pet , label in zip(tqdm(df['nuc_t1_inServer']),df["PET"],df['label']):
@@ -28,6 +29,7 @@ def num_of_label_check():
             neg_nc.append(code.split(".")[0])
             
 
+    print(f"total data number : {len(df['PET'])}")
     print(f"num of pet pos ad : {len(pos_add)}")
     print(f"num of pet neg nc : {len(neg_nc)}")
     
