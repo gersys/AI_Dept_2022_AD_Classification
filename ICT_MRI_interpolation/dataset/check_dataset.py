@@ -14,7 +14,7 @@ import time
 
 
 
-def num_of_label_check() -> List:
+def num_of_label_check() -> list:
      
     print("check the number of pet_pos_ad & pet_neg_nc")
 
