@@ -14,16 +14,16 @@ import time
 
 
 
-def num_of_label_check():
-    
+def num_of_label_check() -> List:
+     
     print("check the number of pet_pos_ad & pet_neg_nc")
 
-    print("data loading start...")
+    print("data loading...")
     
     start_time = time.time()
     df=pd.read_excel("../labels/220420_th_with_demo.xlsx", engine='openpyxl')
     end_time = time.time()
-    print(f"data loaded. the time spent is {end_time-start_time:.3f} ")
+    print(f"data loaded. the time spent is {end_time-start_time:.3f}s ")
     
     
     pos_add=[]
@@ -39,15 +39,7 @@ def num_of_label_check():
     print(f"num of pet pos ad : {len(pos_add)}")
     print(f"num of pet neg nc : {len(neg_nc)}")
     
-    
-    exit()
-    
-    while True:
-        a=int(input("type index"))
-        print(pos_add[a])
-    
-    pass
-
+    return pos_add , neg_nc
 
 def aa():
     for i in pos_add:
