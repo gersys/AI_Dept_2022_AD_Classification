@@ -5,6 +5,7 @@ import csv
 from turtle import pos
 import pandas as pd
 from tqdm import tqdm
+import time
 
 
 
@@ -16,8 +17,13 @@ from tqdm import tqdm
 def num_of_label_check():
     
     print("check the number of pet_pos_ad & pet_neg_nc")
+
+    print("data loading start...")
     
+    start_time = time.time()
     df=pd.read_excel("../labels/220420_th_with_demo.xlsx", engine='openpyxl')
+    end_time = time.time()
+    print(f"data loaded. the time spent is {end_time-start_time:.3f} ")
     
     
     pos_add=[]
