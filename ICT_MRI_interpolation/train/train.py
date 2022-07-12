@@ -13,7 +13,7 @@ import argparse
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
 from model.RIFE import Model
-from dataset import *
+from dataset.dataset import *
 from torch.utils.data import DataLoader, Dataset
 from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data.distributed import DistributedSampler
