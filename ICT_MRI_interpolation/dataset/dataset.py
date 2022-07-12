@@ -25,6 +25,10 @@ class NIfTIDataset(Dataset):
         self.max_index = max_index
         self.data_root = data_root + f'/{self.fold}/{self.mode}'
         self.data_list = os.listdir(data_root)
+
+        print(self.data_list)
+        exit()
+
         self.data_list[:] = [d for d in self.data_list if self.is_data_valid(d)]
 
     def __len__(self):
