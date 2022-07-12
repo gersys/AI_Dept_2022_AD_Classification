@@ -1,4 +1,6 @@
 import os
+import sys
+
 import cv2
 import math
 import time
@@ -7,6 +9,8 @@ import torch.distributed as dist
 import numpy as np
 import random
 import argparse
+
+sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
 from model.RIFE import Model
 from dataset import *
@@ -138,11 +142,12 @@ if __name__ == "__main__":
     parser.add_argument('--batch_size', default=16, type=int, help='minibatch size')
     parser.add_argument('--local_rank', default=0, type=int, help='local rank')
     parser.add_argument('--world_size', default=4, type=int, help='world size')
-    parser.add_argument('--log_path', type=str, default='train_log')
+    parser.add_argument('--log_path', type=str, default='checkpoints')
     parser.add_argument('--data_root', type=str, required=True)
     parser.add_argument('--fold', type=int , required=True)
     parser.add_argument('--eval_root', type=str)
     args = parser.parse_args()
+    
     torch.distributed.init_process_group(backend="nccl", world_size=args.world_size)
     torch.cuda.set_device(args.local_rank)
     seed = 1234
