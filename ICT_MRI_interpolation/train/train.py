@@ -46,13 +46,13 @@ def train(model, args):
     step = 0
     nr_eval = 0
     print("Make trainset")
-    dataset = NIfTIDataset(args.data_root, batch_size=args.batch_size)
+    dataset = NIfTIDataset(args.data_root, batch_size=args.batch_size, fold=args.fold , mode='train')
     sampler = DistributedSampler(dataset)
     train_data = DataLoader(dataset, batch_size=args.batch_size, num_workers=8, pin_memory=True, drop_last=True, sampler=sampler)
     args.step_per_epoch = train_data.__len__()
 
     print("Make evalset")
-    dataset_val = NIfTIDataset(args.eval_root, batch_size=args.batch_size)
+    dataset_val = NIfTIDataset(args.data_root, batch_size=args.batch_size, fold=args.fold , mode='eval')
     val_data = DataLoader(dataset_val, batch_size=args.batch_size, pin_memory=True, num_workers=8)
     print('training...')
     time_stamp = time.time()
@@ -140,6 +140,7 @@ if __name__ == "__main__":
     parser.add_argument('--world_size', default=4, type=int, help='world size')
     parser.add_argument('--log_path', type=str, default='train_log')
     parser.add_argument('--data_root', type=str, required=True)
+    parser.add_argument('--fold', type=int , required=True)
     parser.add_argument('--eval_root', type=str)
     args = parser.parse_args()
     torch.distributed.init_process_group(backend="nccl", world_size=args.world_size)

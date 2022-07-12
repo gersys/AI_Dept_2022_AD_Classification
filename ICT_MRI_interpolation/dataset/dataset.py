@@ -10,13 +10,20 @@ cv2.setNumThreads(1)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class NIfTIDataset(Dataset):
-    def __init__(self, data_root, exp=4, max_index=430, batch_size=16):
+    def __init__(self, data_root, exp=4, max_index=430, batch_size=16, fold = None, mode=None):
+
+        self.fold = fold
+        assert isinstance(self.fold, int) , "undefined Dataset fold"
+
+        self.mode = mode 
+        assert self.mode == 'train' or self.mode == 'eval' , "undefined mode"
+
         self.batch_size = batch_size
         self.h = 360
         self.w = 480
         self.exp = exp
         self.max_index = max_index
-        self.data_root = data_root
+        self.data_root = data_root + f'/{self.fold}/{self.mode}'
         self.data_list = os.listdir(data_root)
         self.data_list[:] = [d for d in self.data_list if self.is_data_valid(d)]
 
