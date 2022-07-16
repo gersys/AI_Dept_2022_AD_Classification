@@ -60,7 +60,11 @@ def train(model, args):
     val_data = DataLoader(dataset_val, batch_size=args.batch_size, pin_memory=True, num_workers=8)
     print('training...')
     time_stamp = time.time()
-    for epoch in range(args.epoch):
+
+    start_epoch = 0 
+    if args.load_model:
+        start_epoch = args.load_epoch
+    for epoch in range(start_epoch, args.epoch): 
         sampler.set_epoch(epoch)
         for i, data in enumerate(train_data):
             data_time_interval = time.time() - time_stamp
@@ -160,9 +164,11 @@ if __name__ == "__main__":
     torch.backends.cudnn.benchmark = True
     model = Model(args.local_rank, gray=True)
     if args.load_model:
+        print("load model")
         assert isinstance(args.load_epoch, int) , "input load_epoch argument"
         load_dir = f'./checkpoint/flownet_{args.load_epoch}'
         model.load_model(load_dir,-1)
+        print("model load done")
     os.makedirs(args.log_path, exist_ok=True)
     train(model, args)
         
