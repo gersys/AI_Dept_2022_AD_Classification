@@ -166,7 +166,7 @@ if __name__ == "__main__":
     if args.load_model:
         print("load model")
         assert isinstance(args.load_epoch, int) , "input load_epoch argument"
-        load_dir = f'./checkpoint/'
+        load_dir = f'./checkpoint'
         model.load_model(load_dir,args.load_epoch)
         print("model load done")
     os.makedirs(args.log_path, exist_ok=True)
