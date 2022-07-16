@@ -146,6 +146,8 @@ if __name__ == "__main__":
     parser.add_argument('--data_root', type=str, required=True)
     parser.add_argument('--fold', type=int , required=True)
     parser.add_argument('--eval_root', type=str)
+    parser.add_argument('--load_model', action='store_true')
+    parser.add_argument('--load_epoch', type=int , default=None)
     args = parser.parse_args()
     
     torch.distributed.init_process_group(backend="nccl", world_size=args.world_size)
@@ -157,6 +159,10 @@ if __name__ == "__main__":
     torch.cuda.manual_seed_all(seed)
     torch.backends.cudnn.benchmark = True
     model = Model(args.local_rank, gray=True)
+    if args.load_model:
+        assert isinstance(args.load_epoch, int) , "input load_epoch argument"
+        load_dir = f'./checkpoint/flownet_{args.load_epoch}'
+        model.load_model(load_dir,-1)
     os.makedirs(args.log_path, exist_ok=True)
     train(model, args)
         
