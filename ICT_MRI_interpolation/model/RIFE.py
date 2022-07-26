@@ -20,7 +20,7 @@ import torchvision
 device = torch.device("cuda")
     
 class Model:
-    def __init__(self, local_rank=-1, arbitrary=False, gray=False):
+    def __init__(self, local_rank=-1, arbitrary=False, gray=False , args = args):
         if arbitrary == True:
             self.flownet = IFNet_m()
         elif gray:
@@ -28,6 +28,7 @@ class Model:
         else:
             self.flownet = IFNet()
         self.gray = gray
+        self.args = args
         self.device()
         parms_optim = []
         for k, v in self.flownet.named_parameters():
@@ -100,22 +101,37 @@ class Model:
 
         if training:
             self.optimG.zero_grad()
-            loss_G = loss_l1 * 10 + loss_tea + loss_distill * 0.01 + loss_percept_stu*10 + loss_percept_tea
+            if self.args.perceptual:
+                loss_G = loss_l1 * 10 + loss_tea + loss_distill * 0.01 + loss_percept_stu*10 + loss_percept_tea
+            else:
+                loss_G = loss_l1 * 10 + loss_tea + loss_distill * 0.01
             loss_G.backward()
             self.optimG.step()
         else:
             flow_teacher = flow[2]
             merged_teacher = merged[2]
 
-        return merged[2], {
-            'merged_tea': merged_teacher,
-            'mask': mask,
-            'mask_tea': mask,
-            'flow': flow[2][:, :2],
-            'flow_tea': flow_teacher,
-            'loss_l1': loss_l1,
-            'loss_tea': loss_tea,
-            'loss_distill': loss_distill,
-            'loss_percept_stu': loss_percept_stu,
-            'loss_percept_tea': loss_percept_tea
-            }
+        if self.args.perceptual:
+            return merged[2], {
+                'merged_tea': merged_teacher,
+                'mask': mask,
+                'mask_tea': mask,
+                'flow': flow[2][:, :2],
+                'flow_tea': flow_teacher,
+                'loss_l1': loss_l1,
+                'loss_tea': loss_tea,
+                'loss_distill': loss_distill,
+                'loss_percept_stu': loss_percept_stu,
+                'loss_percept_tea': loss_percept_tea
+                }
+        else:
+            return merged[2], {
+                'merged_tea': merged_teacher,
+                'mask': mask,
+                'mask_tea': mask,
+                'flow': flow[2][:, :2],
+                'flow_tea': flow_teacher,
+                'loss_l1': loss_l1,
+                'loss_tea': loss_tea,
+                'loss_distill': loss_distill
+                }

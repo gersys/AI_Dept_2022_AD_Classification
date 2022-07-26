@@ -78,8 +78,9 @@ def train(model, args):
                 writer.add_scalar('loss/l1', info['loss_l1'], step)
                 writer.add_scalar('loss/tea', info['loss_tea'], step)
                 writer.add_scalar('loss/distill', info['loss_distill'], step)
-                writer.add_scalar('loss/perceptual', info['loss_percept_stu'], step)
-                writer.add_scalar('loss/tea_perceptual', info['loss_percept_tea'], step)
+                if args.perceptual:
+                    writer.add_scalar('loss/perceptual', info['loss_percept_stu'], step)
+                    writer.add_scalar('loss/tea_perceptual', info['loss_percept_tea'], step)
             if step % 1000 == 1 and local_rank == 0:
                 gt = (gt.permute(0, 2, 3, 1).detach().cpu().numpy() * 255).astype('uint8')
                 mask = (torch.cat((info['mask'], info['mask_tea']), 3).permute(0, 2, 3, 1).detach().cpu().numpy() * 255).astype('uint8')
@@ -148,6 +149,7 @@ if __name__ == "__main__":
     parser.add_argument('--data_root', type=str, required=True)
     parser.add_argument('--fold', type=int , required=True)
     parser.add_argument('--eval_root', type=str)
+    parser.add_argument('--perceptual', action= 'store_true' )
     args = parser.parse_args()
     
     torch.distributed.init_process_group(backend="nccl", world_size=args.world_size)
@@ -158,8 +160,12 @@ if __name__ == "__main__":
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
     torch.backends.cudnn.benchmark = True
-    model = Model(args.local_rank, gray=True)
+    model = Model(args.local_rank, gray=True, args= args)
 
+    
+    if args.perceptual:
+        args.log_path = args.log_path + '/perceptual'
+        
     os.makedirs(args.log_path, exist_ok=True)
     train(model, args)
         
