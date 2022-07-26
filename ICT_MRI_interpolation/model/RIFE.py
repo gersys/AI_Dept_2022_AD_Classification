@@ -20,7 +20,7 @@ import torchvision
 device = torch.device("cuda")
     
 class Model:
-    def __init__(self, local_rank=-1, arbitrary=False, gray=False , args = args):
+    def __init__(self, local_rank=-1, arbitrary=False, gray=False , args = None):
         if arbitrary == True:
             self.flownet = IFNet_m()
         elif gray:
