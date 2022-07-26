@@ -164,7 +164,9 @@ if __name__ == "__main__":
 
     
     if args.perceptual:
-        args.log_path = args.log_path + '/perceptual'
+        args.log_path = args.log_path + f'/perceptual/{args.fold}'
+    else:
+        args.log_path = args.log_path + f'/no_perceptual/{args.fold}'
         
     os.makedirs(args.log_path, exist_ok=True)
     train(model, args)
