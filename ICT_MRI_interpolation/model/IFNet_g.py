@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from model.warplayer import warp
 from model.refine import *
+from model.VGGPerceptualLoss import *
 
 def deconv(in_planes, out_planes, kernel_size=4, stride=2, padding=1):
     return nn.Sequential(
@@ -66,6 +67,10 @@ class IFNet_g(nn.Module):
         self.block_tea = IFBlock(6+4, c=90)
         self.contextnet = Contextnet(gray=True)
         self.unet = Unet(gray=True)
+        self.vgg19perceptual = VGGPerceptualLoss()
+    def getPerceptualLoss(self, input, target):
+
+        return self.vgg19perceptual(input,target)
 
     def forward(self, x, scale=[4,2,1], timestep=0.5):
         img0 = x[:, :1]

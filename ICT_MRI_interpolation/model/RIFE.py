@@ -14,6 +14,9 @@ from model.loss import *
 from model.laplacian import *
 from model.refine import *
 
+
+import torchvision
+
 device = torch.device("cuda")
     
 class Model:
@@ -26,10 +29,18 @@ class Model:
             self.flownet = IFNet()
         self.gray = gray
         self.device()
-        self.optimG = AdamW(self.flownet.parameters(), lr=1e-6, weight_decay=1e-2) # use large weight decay may avoid NaN loss
+        parms_optim = []
+        for k, v in self.flownet.named_parameters():
+            if 'vgg19perceptual' in k:
+                pass
+            else :
+                parms_optim.append(v)
+
+        self.optimG = AdamW(parms_optim, lr=1e-6, weight_decay=1e-2) # use large weight decay may avoid NaN loss
         self.epe = EPE()
         self.lap = LapLoss()
         self.mse = nn.MSELoss()
+
         if local_rank != -1:
             self.flownet = DDP(self.flownet, device_ids=[local_rank], output_device=local_rank)
 
@@ -81,16 +92,21 @@ class Model:
             self.eval()
         flow, mask, merged, flow_teacher, merged_teacher, loss_distill = self.flownet(torch.cat((imgs, gt), 1), scale=[4, 2, 1])
         loss_l1 = (self.lap(merged[2], gt)).mean()
+        loss_percept_stu = self.flownet.module.getPerceptualLoss(merged[2], gt)
+
         # loss_l1 = self.mse(merged[2], gt)
         loss_tea = (self.lap(merged_teacher, gt)).mean()
+        loss_percept_tea = self.flownet.module.getPerceptualLoss(merged_teacher, gt)
+
         if training:
             self.optimG.zero_grad()
-            loss_G = loss_l1 * 10 + loss_tea + loss_distill * 0.01
+            loss_G = loss_l1 * 10 + loss_tea + loss_distill * 0.01 + loss_percept_stu*10 + loss_percept_tea
             loss_G.backward()
             self.optimG.step()
         else:
             flow_teacher = flow[2]
-            merged_teacher = merged[2] 
+            merged_teacher = merged[2]
+
         return merged[2], {
             'merged_tea': merged_teacher,
             'mask': mask,
@@ -100,4 +116,6 @@ class Model:
             'loss_l1': loss_l1,
             'loss_tea': loss_tea,
             'loss_distill': loss_distill,
+            'loss_percept_stu': loss_percept_stu,
+            'loss_percept_tea': loss_percept_tea
             }

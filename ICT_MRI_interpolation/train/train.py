@@ -9,7 +9,7 @@ import torch.distributed as dist
 import numpy as np
 import random
 import argparse
-
+from torch.nn.parallel import DistributedDataParallel as DDP
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
 from model.RIFE import Model
@@ -60,11 +60,7 @@ def train(model, args):
     val_data = DataLoader(dataset_val, batch_size=args.batch_size, pin_memory=True, num_workers=8)
     print('training...')
     time_stamp = time.time()
-
-    start_epoch = 0 
-    if args.load_model:
-        start_epoch = args.load_epoch
-    for epoch in range(start_epoch, args.epoch): 
+    for epoch in range(args.epoch):
         sampler.set_epoch(epoch)
         for i, data in enumerate(train_data):
             data_time_interval = time.time() - time_stamp
@@ -82,6 +78,8 @@ def train(model, args):
                 writer.add_scalar('loss/l1', info['loss_l1'], step)
                 writer.add_scalar('loss/tea', info['loss_tea'], step)
                 writer.add_scalar('loss/distill', info['loss_distill'], step)
+                writer.add_scalar('loss/perceptual', info['loss_percept_stu'], step)
+                writer.add_scalar('loss/tea_perceptual', info['loss_percept_tea'], step)
             if step % 1000 == 1 and local_rank == 0:
                 gt = (gt.permute(0, 2, 3, 1).detach().cpu().numpy() * 255).astype('uint8')
                 mask = (torch.cat((info['mask'], info['mask_tea']), 3).permute(0, 2, 3, 1).detach().cpu().numpy() * 255).astype('uint8')
@@ -150,8 +148,6 @@ if __name__ == "__main__":
     parser.add_argument('--data_root', type=str, required=True)
     parser.add_argument('--fold', type=int , required=True)
     parser.add_argument('--eval_root', type=str)
-    parser.add_argument('--load_model', action='store_true')
-    parser.add_argument('--load_epoch', type=int , default=None)
     args = parser.parse_args()
     
     torch.distributed.init_process_group(backend="nccl", world_size=args.world_size)
@@ -163,12 +159,7 @@ if __name__ == "__main__":
     torch.cuda.manual_seed_all(seed)
     torch.backends.cudnn.benchmark = True
     model = Model(args.local_rank, gray=True)
-    if args.load_model:
-        print("load model")
-        assert isinstance(args.load_epoch, int) , "input load_epoch argument"
-        load_dir = f'/project/Project/ICT_medical_AD_VFI/ICT_MRI_interpolation/train/checkpoints'
-        model.load_model(load_dir,args.load_epoch)
-        print("model load done")
+
     os.makedirs(args.log_path, exist_ok=True)
     train(model, args)
         
