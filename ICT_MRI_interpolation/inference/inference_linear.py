@@ -6,6 +6,8 @@ import argparse
 import numpy as np
 from torch.nn import functional as F
 import warnings
+from tqdm import tqdm
+import time
 
 
 
@@ -26,7 +28,9 @@ def linear_interpolation(img0 , img1):
     return mid
 
 
-for (root, dirs, files) in os.walk(args.img):
+start_time = time.time()
+
+for (root, dirs, files) in tqdm(os.walk(args.img)):
 
 
     # handle the case the number of z-axis is 360 
@@ -93,9 +97,12 @@ for (root, dirs, files) in os.walk(args.img):
     if INDEX_LIST[-1] < 479:
         for i in range(INDEX_LIST[-1], 480):
             shutil.copy(os.path.join(args.gt_dir, os.path.basename(root), f'{i}.png'), os.path.join(outdir, f'{i}.png'))
-
-        
     # print('Total MSE: %.3f' % (error / count))
+
+end_time = time.time()
+print(f"total time : {end_time-start_time:.4f}")
+
+    
 
 
 
