@@ -59,7 +59,7 @@ class IFBlock(nn.Module):
         return flow, mask
     
 class IFNet_g(nn.Module):
-    def __init__(self):
+    def __init__(self, args):
         super(IFNet_g, self).__init__()
         self.block0 = IFBlock(2, c=240)
         self.block1 = IFBlock(5+4, c=150)
@@ -67,7 +67,8 @@ class IFNet_g(nn.Module):
         self.block_tea = IFBlock(6+4, c=90)
         self.contextnet = Contextnet(gray=True)
         self.unet = Unet(gray=True)
-        self.vgg19perceptual = VGGPerceptualLoss()
+        if args.perceptual:
+            self.vgg19perceptual = VGGPerceptualLoss()
     def getPerceptualLoss(self, input, target):
 
         return self.vgg19perceptual(input,target)

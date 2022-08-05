@@ -24,7 +24,7 @@ class Model:
         if arbitrary == True:
             self.flownet = IFNet_m()
         elif gray:
-            self.flownet = IFNet_g()
+            self.flownet = IFNet_g(args=args)
         else:
             self.flownet = IFNet()
         self.gray = gray

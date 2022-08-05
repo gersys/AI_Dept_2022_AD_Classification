@@ -25,6 +25,7 @@ parser.add_argument('--rmaxcycles', default=8, type=int, help='limit max number 
 parser.add_argument('--model', dest='modelDir', type=str, default='train_log', help='directory with trained model files')
 parser.add_argument('--out', default='output', type=str, help='output directory')
 parser.add_argument('--gt_dir', default='/mnt/hdd0/ICT_DATASET_EVAL', type=str)
+parser.add_argument('--perceptual', action='store_true')
 
 args = parser.parse_args()
 
@@ -48,7 +49,7 @@ except:
         print("Loaded v1.x HD model")
     except:
         from model.RIFE import Model
-        model = Model(gray=True)
+        model = Model(gray=True,args=args)
         model.load_model(args.modelDir, args.epoch)
         print("Loaded custom Model")
 model.eval()
