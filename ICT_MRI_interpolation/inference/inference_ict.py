@@ -1,4 +1,6 @@
 import os
+import sys
+sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 import shutil
 import cv2
 import torch
@@ -18,6 +20,7 @@ if torch.cuda.is_available():
 parser = argparse.ArgumentParser(description='Interpolation for a pair of images')
 parser.add_argument('--img', required=True)
 parser.add_argument('--exp', default=4, type=int)
+parser.add_argument('--epoch', type=int , default=90)
 parser.add_argument('--rmaxcycles', default=8, type=int, help='limit max number of bisectional cycles')
 parser.add_argument('--model', dest='modelDir', type=str, default='train_log', help='directory with trained model files')
 parser.add_argument('--out', default='output', type=str, help='output directory')
@@ -30,23 +33,23 @@ try:
     try:
         from model.RIFE_HDv2 import Model
         model = Model()
-        model.load_model(args.modelDir, -1)
+        model.load_model(args.modelDir, args.epoch)
         print("Loaded v2.x HD model.")
     except:
         from train_log.RIFE_HDv3 import Model
         model = Model()
-        model.load_model(args.modelDir, -1)
+        model.load_model(args.modelDir, args.epoch)
         print("Loaded v3.x HD model.")
 except:
     try:
         from model.RIFE_HD import Model
         model = Model()
-        model.load_model(args.modelDir, -1)
+        model.load_model(args.modelDir, args.epoch)
         print("Loaded v1.x HD model")
     except:
         from model.RIFE import Model
         model = Model(gray=True)
-        model.load_model(args.modelDir, -1)
+        model.load_model(args.modelDir, args.epoch)
         print("Loaded custom Model")
 model.eval()
 model.device()
@@ -54,7 +57,7 @@ model.device()
 
 if os.path.exists(args.out):
     shutil.rmtree(args.out)
-os.mkdir(args.out)
+os.makedirs(args.out, exist_ok=True)
 
 INDEX_LIST = list(range(0, 480, 2**args.exp))
 
