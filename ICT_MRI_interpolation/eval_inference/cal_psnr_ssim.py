@@ -6,6 +6,7 @@ import cv2
 import math
 from tqdm import tqdm
 import time
+import argparse
 
 
 
@@ -83,16 +84,39 @@ def calculate_ssim(img1, img2):
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--org_img_path', default='/mnt/ICT_DATASET_FOLDS', type=str)
+    parser.add_argument('--vfi_img_path', default='/project/Project/ICT_medical_AD_VFI/ICT_MRI_interpolation/inference', type=str)
+    parser.add_argument('--split', default=None, type=str)
+    parser.add_argument('--perceptual', action= 'store_true' )
+    parser.add_argument('--laplacian', action= 'store_true' )
+
+    args = parser.parse_args()
+    
+    
 
 
     # img 이름 list loading
-    _file_names = os.listdir('/mnt/ICT_DATASET_EVAL')
+    _file_names = os.listdir(args.org_img_path)
+    
 
     _z_axis = 480
 
     org_path ='/mnt/ICT_DATASET_EVAL/'
-    vfi_path = '/project/ICT_medical_interpolation/results/eval/'
-    linear_path = '/project/ICT_medical_interpolation/linear_results/eval/'
+    
+    if args.perceptual:
+        if args.laplacian:
+            vfi_path = args.vfi_img_path +'/laplacian_perceptual_results/'+f'{args.split}/'
+        else:
+            vfi_path = args.vfi_img_path +'/laplacian_no_perceptual_results/'+f'{args.split}/'
+    else:
+        if args.laplacian:
+            vfi_path = args.vfi_img_path +'/laplacian_no_perceptual_results/'+f'{args.split}/'
+        else:
+            vfi_path = args.vfi_img_path +'/no_laplacian_no_perceptual_results/'+f'{args.split}/'
+        
+            
+    linear_path = args.vfi_img_path +'/linear_results/'+f'{args.split}/'
     
 
     vfi_mse = [[],[],[],[]]
@@ -104,6 +128,8 @@ if __name__ == '__main__':
 
     save_path = './psnr_ssim_results/'
     
+    ratios = ['x2','x4','x8','x16','x32']
+    
 
     for _fn in tqdm(_file_names):
         cur_img_vfi_mse=[]
@@ -114,8 +140,6 @@ if __name__ == '__main__':
         cur_img_linear_ssim=[]
         for i in range(_z_axis):
             i=str(i)
-            # print(f"{i}-th img")
-            
             
             # 원본 load
 
@@ -123,56 +147,43 @@ if __name__ == '__main__':
             org_img=cv2.imread(org_path+_fn+f'/{i}.png')
             a2 = time.time()
 
-
             if org_img.shape[1]!=_z_axis:
                 break
 
-            # print(f"org img load time {a2-a1:.3f}")
-
-            # VFI 생성본 load (x2 , x4 , x8 , x16)
 
             a3 = time.time()
             vfi_imgs=[]
-            for ratio in ['x2','x4','x8','x16']:
+            for ratio in ratios:
                 vfi_imgs.append(cv2.imread(vfi_path+f'{ratio}/'+_fn+f'/{i}.png'))
 
             a4 = time.time()
             
 
-            # print(f"vfi img load time {a4-a3:.3f}")
+            
 
             linear_imgs=[]
             # linear 생성본 load (x2 , x4 , x8 , x16)
 
             a5 = time.time()
-            for ratio in ['x2','x4','x8','x16']:
+            for ratio in ratios:
                 linear_imgs.append(cv2.imread(linear_path+f'{ratio}/'+_fn+f'/{i}.png'))
 
             a6 = time.time()
 
-            # print(f"linear img load time {a6-a5:.3f}")
+            
             
             # #calulate vfi mse
             for i,vfi_img in enumerate(vfi_imgs):
                 vfi_mse[i].append(calculate_mse(org_img, vfi_img))
 
-            #calulate vfi psnr
-
-            a7 = time.time()
-            # for i,vfi_img in enumerate(vfi_imgs):
-            #     vfi_psnr[i].append(calculate_psnr(org_img, vfi_img))
-            a8 = time.time()
-
-            # print(f"vfi psnr time {a8-a7:.3f}")
-
             
-            # #calculate vfi ssim
-            # a9 = time.time()
-            # for i,vfi_img in enumerate(vfi_imgs):
-            #     vfi_ssim[i].append(calculate_ssim(org_img, vfi_img))
-            # a10 = time.time()
+            #calculate vfi ssim
+            a9 = time.time()
+            for i,vfi_img in enumerate(vfi_imgs):
+                vfi_ssim[i].append(calculate_ssim(org_img, vfi_img))
+            a10 = time.time()
 
-            # print(f"vfi ssim time {a10-a9:.3f}")
+            print(f"vfi ssim time {a10-a9:.3f}")
 
 
             #calulate linear mse
@@ -180,24 +191,15 @@ if __name__ == '__main__':
             for i,linear_img in enumerate(linear_imgs):
                 linear_mse[i].append(calculate_mse(org_img, linear_img))
 
-
-            #calulate linear psnr
             
-            a11 = time.time()
-            # for i,linear_img in enumerate(linear_imgs):
-            #     linear_psnr[i].append(calculate_psnr(org_img, linear_img))
-            a12 = time.time()
-
-            # print(f"linear psnr time {a12-a11:.3f}")
+            #calculate linear ssim  
+            a13 = time.time()
             
-            # #calculate linear ssim  
-            # a13 = time.time()
-            
-            # for i,linear_img in enumerate(linear_imgs):
-            #     linear_ssim[i].append(calculate_ssim(org_img, linear_img))
-            # a14 = time.time()
+            for i,linear_img in enumerate(linear_imgs):
+                linear_ssim[i].append(calculate_ssim(org_img, linear_img))
+            a14 = time.time()
 
-            # print(f"linear ssim time {a14-a13:.3f}")
+            print(f"linear ssim time {a14-a13:.3f}")
             
             # exit()
         
@@ -206,13 +208,27 @@ if __name__ == '__main__':
     os.makedirs(save_path, exist_ok=True)
 
 
-
-    np.save(save_path+"vfi_mse",np.asarray(vfi_mse))
-    # np.save(save_path+"vfi_psnr",np.asarray(vfi_psnr))
-    # np.save(save_path+"vfi_ssim",np.asarray(vfi_ssim))
-    np.save(save_path+"linear_mse",np.asarray(linear_mse))
-    # np.save(save_path+"linear_psnr",np.asarray(linear_psnr))
-    # np.save(save_path+"linear_ssim",np.asarray(linear_ssim))
+    if args.perceptual:
+        if args.laplacian:
+            np.save(save_path+f"laplacian_perceptual_mse_{args.split}.npy",np.asarray(vfi_mse))
+            np.save(save_path+f"laplacian_perceptual_ssim_{args.split}.npy",np.asarray(vfi_ssim))
+        else:
+            np.save(save_path+f"no_laplacian_perceptual_mse_{args.split}.npy",np.asarray(vfi_mse))
+            np.save(save_path+f"no_laplacian_perceptual_ssim_{args.split}.npy",np.asarray(vfi_ssim))
+    else:
+        if args.laplacian:
+            np.save(save_path+f"laplacian_no_perceptual_mse_{args.split}.npy",np.asarray(vfi_mse))
+            np.save(save_path+f"laplacian_no_perceptual_ssim_{args.split}.npy",np.asarray(vfi_ssim))
+        else:
+            np.save(save_path+f"no_laplacian_no_perceptual_mse_{args.split}.npy",np.asarray(vfi_mse))
+            np.save(save_path+f"no_laplacian_no_perceptual_ssim_{args.split}.npy",np.asarray(vfi_ssim))
+            
+                
+    np.save(save_path+f"linear_mse_{args.split}.npy",np.asarray(linear_mse))
+    np.save(save_path+f"linear_ssim_{args.split}.npy",np.asarray(linear_ssim))
+    
+    
+    
 
     print("mse , psnr , ssim npy save done")
 
