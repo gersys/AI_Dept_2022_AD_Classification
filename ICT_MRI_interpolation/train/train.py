@@ -150,6 +150,8 @@ if __name__ == "__main__":
     parser.add_argument('--fold', type=int , required=True)
     parser.add_argument('--eval_root', type=str)
     parser.add_argument('--perceptual', action= 'store_true' )
+    parser.add_argument('--laplacian', action= 'store_true' )
+
     args = parser.parse_args()
     
     torch.distributed.init_process_group(backend="nccl", world_size=args.world_size)
@@ -162,12 +164,17 @@ if __name__ == "__main__":
     torch.backends.cudnn.benchmark = True
     model = Model(args.local_rank, gray=True, args= args)
 
-    
-    if args.perceptual:
-        args.log_path = args.log_path + f'/perceptual/{args.fold}'
+    if args.laplacian:
+        if args.perceptual:
+            args.log_path = args.log_path + f'/laplacian_perceptual/{args.fold}'
+        else:
+            args.log_path = args.log_path + f'/laplacian_no_perceptual/{args.fold}'
     else:
-        args.log_path = args.log_path + f'/no_perceptual/{args.fold}'
-        
+        if args.perceptual:
+            args.log_path = args.log_path + f'/no_laplacian_perceptual/{args.fold}'
+        else:
+            args.log_path = args.log_path + f'/no_laplacian_no_perceptual/{args.fold}'
+            
     os.makedirs(args.log_path, exist_ok=True)
     train(model, args)
         

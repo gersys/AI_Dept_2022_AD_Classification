@@ -92,12 +92,21 @@ class Model:
         else:
             self.eval()
         flow, mask, merged, flow_teacher, merged_teacher, loss_distill = self.flownet(torch.cat((imgs, gt), 1), scale=[4, 2, 1])
-        loss_l1 = (self.lap(merged[2], gt)).mean()
-        loss_percept_stu = self.flownet.module.getPerceptualLoss(merged[2], gt)
 
-        # loss_l1 = self.mse(merged[2], gt)
-        loss_tea = (self.lap(merged_teacher, gt)).mean()
-        loss_percept_tea = self.flownet.module.getPerceptualLoss(merged_teacher, gt)
+        if self.args.laplacian:
+            loss_l1 = (self.lap(merged[2], gt)).mean()
+            loss_tea = (self.lap(merged_teacher, gt)).mean()
+        else:
+            loss_l1 = (self.mse(merged[2], gt)).mean()
+            loss_tea = (self.mse(merged_teacher, gt)).mean()
+        
+        if self.args.perceptual:
+            loss_percept_stu = self.flownet.module.getPerceptualLoss(merged[2], gt)
+            loss_percept_tea = self.flownet.module.getPerceptualLoss(merged_teacher, gt)
+
+        
+        
+        
 
         if training:
             self.optimG.zero_grad()
