@@ -50,7 +50,7 @@ class NIfTIDataset(Dataset):
         intervals = []
         for i in range(self.exp):
             itv = 2**i
-            if img_idx < itv or (self.max_index - img_idx) < itv:
+            if img_idx < itv or (self.max_index - img_idx) < itv or i>4:
                 break
             else:
                 intervals.append(itv)
