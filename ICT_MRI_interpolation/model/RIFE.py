@@ -9,6 +9,7 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 from model.IFNet import *
 from model.IFNet_m import *
 from model.IFNet_g import *
+from model.FILM import FILM
 import torch.nn.functional as F
 from model.loss import *
 from model.laplacian import *
@@ -21,12 +22,19 @@ device = torch.device("cuda")
     
 class Model:
     def __init__(self, local_rank=-1, arbitrary=False, gray=False , args = None):
-        if arbitrary == True:
-            self.flownet = IFNet_m()
-        elif gray:
-            self.flownet = IFNet_g(args=args)
+
+        if args.model =='FILM':
+            self.flownet = FILM()
+            print(self.flownet)
         else:
-            self.flownet = IFNet()
+            if arbitrary == True:
+                self.flownet = IFNet_m()
+            elif gray:
+                self.flownet = IFNet_g(args=args)
+            else:
+                self.flownet = IFNet()
+        
+        self.model = args.model
         self.gray = gray
         self.args = args
         self.device()
@@ -91,7 +99,23 @@ class Model:
             self.train()
         else:
             self.eval()
-        flow, mask, merged, flow_teacher, merged_teacher, loss_distill = self.flownet(torch.cat((imgs, gt), 1), scale=[4, 2, 1])
+
+        if self.model == 'FILM':	
+            result = self.flownet(torch.cat((imgs, gt), 1), scale=[4, 2, 1])	
+            loss_l1 = (self.lap(result, gt)).mean()	
+            loss_percept, loss_gram = self.flownet.module.getPerceptualLoss(result, gt)	
+            if training:	
+                self.optimG.zero_grad()	
+                loss_G = loss_l1 + loss_percept #+ loss_gram	
+                loss_G.backward()	
+                self.optimG.step()	
+            return result, {'loss_l1':loss_l1}	
+        else:	
+            flow, mask, merged, flow_teacher, merged_teacher, loss_distill = self.flownet(torch.cat((imgs, gt), 1), scale=[4, 2, 1])
+
+
+
+        
 
         if self.args.laplacian:
             loss_l1 = (self.lap(merged[2], gt)).mean()

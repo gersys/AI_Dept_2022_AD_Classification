@@ -76,12 +76,13 @@ def train(model, args):
             if step % 200 == 1 and local_rank == 0:
                 writer.add_scalar('learning_rate', learning_rate, step)
                 writer.add_scalar('loss/l1', info['loss_l1'], step)
-                writer.add_scalar('loss/tea', info['loss_tea'], step)
-                writer.add_scalar('loss/distill', info['loss_distill'], step)
+                if args.model != 'FILM':
+                    writer.add_scalar('loss/tea', info['loss_tea'], step)
+                    writer.add_scalar('loss/distill', info['loss_distill'], step)
                 if args.perceptual:
                     writer.add_scalar('loss/perceptual', info['loss_percept_stu'], step)
                     writer.add_scalar('loss/tea_perceptual', info['loss_percept_tea'], step)
-            if step % 1000 == 1 and local_rank == 0:
+            if step % 1000 == 1 and local_rank == 0 and args.model != 'FILM':
                 gt = (gt.permute(0, 2, 3, 1).detach().cpu().numpy() * 255).astype('uint8')
                 mask = (torch.cat((info['mask'], info['mask_tea']), 3).permute(0, 2, 3, 1).detach().cpu().numpy() * 255).astype('uint8')
                 pred = (pred.permute(0, 2, 3, 1).detach().cpu().numpy() * 255).astype('uint8')
@@ -102,7 +103,7 @@ def train(model, args):
                 model.save_model(args.log_path, epoch ,local_rank)
             
         nr_eval += 1
-        if nr_eval % 5 == 0:
+        if nr_eval % 5 == 0 and args.model != 'FILM':
             evaluate(model, val_data, step, local_rank, writer_val)
         model.save_model(args.log_path, epoch ,local_rank)            
         dist.barrier()
@@ -141,6 +142,7 @@ def evaluate(model, val_data, nr_eval, local_rank, writer_val):
         
 if __name__ == "__main__":    
     parser = argparse.ArgumentParser()
+    parser.add_argument('--model', type=str , default='RIFE')
     parser.add_argument('--epoch', default=100, type=int)
     parser.add_argument('--batch_size', default=16, type=int, help='minibatch size')
     parser.add_argument('--local_rank', default=0, type=int, help='local rank')
@@ -164,17 +166,21 @@ if __name__ == "__main__":
     torch.backends.cudnn.benchmark = True
     model = Model(args.local_rank, gray=True, args= args)
 
-    if args.laplacian:
-        if args.perceptual:
-            args.log_path = args.log_path + f'/laplacian_perceptual/{args.fold}'
-        else:
-            args.log_path = args.log_path + f'/laplacian_no_perceptual/{args.fold}'
+    if model == 'FILM':
+        args.log_path = args.log_path +  f'/no_laplacian_film/{args.fold}'
     else:
-        if args.perceptual:
-            args.log_path = args.log_path + f'/no_laplacian_perceptual/{args.fold}'
+
+        if args.laplacian:
+            if args.perceptual:
+                args.log_path = args.log_path + f'/laplacian_perceptual/{args.fold}'
+            else:
+                args.log_path = args.log_path + f'/laplacian_no_perceptual/{args.fold}'
         else:
-            args.log_path = args.log_path + f'/no_laplacian_no_perceptual/{args.fold}'
-            
+            if args.perceptual:
+                args.log_path = args.log_path + f'/no_laplacian_perceptual/{args.fold}'
+            else:
+                args.log_path = args.log_path + f'/no_laplacian_no_perceptual/{args.fold}'
+                
     os.makedirs(args.log_path, exist_ok=True)
     train(model, args)
         
