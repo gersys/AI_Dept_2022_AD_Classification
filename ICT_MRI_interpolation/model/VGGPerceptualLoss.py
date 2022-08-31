@@ -47,7 +47,7 @@ class VGGPerceptualLoss(torch.nn.Module):
 
 class VGGPerceptualLoss_FILM(torch.nn.Module):
     def __init__(self, resize=True):
-        super(VGGPerceptualLoss, self).__init__()
+        super(VGGPerceptualLoss_FILM, self).__init__()
         blocks = []
         blocks.append(torchvision.models.vgg19(pretrained=True).features[:4].eval())
         blocks.append(torchvision.models.vgg19(pretrained=True).features[4:9].eval())
