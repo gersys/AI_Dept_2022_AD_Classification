@@ -10,13 +10,15 @@ cv2.setNumThreads(1)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class NIfTIDataset(Dataset):
-    def __init__(self, data_root, exp=4, max_index=430, batch_size=16, fold = None, mode=None):
+    def __init__(self, data_root, exp=4, max_index=430, batch_size=16, fold = None, mode=None , args= None):
 
         self.fold = fold
         assert isinstance(self.fold, int) , "undefined Dataset fold"
 
         self.mode = mode 
         assert self.mode == 'train' or self.mode == 'eval' , "undefined mode"
+
+        self.args = args
 
         self.batch_size = batch_size
         self.h = 360
@@ -58,9 +60,14 @@ class NIfTIDataset(Dataset):
         l_idx = img_idx - itv
         r_idx = img_idx + itv
 
-        img0 = cv2.imread(os.path.join(dir_path, '%d.png' % l_idx), cv2.IMREAD_GRAYSCALE)[:,:,np.newaxis]
-        gt = cv2.imread(os.path.join(dir_path, '%d.png' % img_idx), cv2.IMREAD_GRAYSCALE)[:,:,np.newaxis]
-        img1 = cv2.imread(os.path.join(dir_path, '%d.png' % r_idx), cv2.IMREAD_GRAYSCALE)[:,:,np.newaxis]
+        if self.args.model == 'FILM':
+            img0 = cv2.imread(os.path.join(dir_path, '%d.png' % l_idx), cv2.IMREAD_GRAYSCALE)[20:340,:,np.newaxis]	
+            gt = cv2.imread(os.path.join(dir_path, '%d.png' % img_idx), cv2.IMREAD_GRAYSCALE)[20:340,:,np.newaxis]	
+            img1 = cv2.imread(os.path.join(dir_path, '%d.png' % r_idx), cv2.IMREAD_GRAYSCALE)[20:340,:,np.newaxis]
+        else:
+            img0 = cv2.imread(os.path.join(dir_path, '%d.png' % l_idx), cv2.IMREAD_GRAYSCALE)[:,:,np.newaxis]
+            gt = cv2.imread(os.path.join(dir_path, '%d.png' % img_idx), cv2.IMREAD_GRAYSCALE)[:,:,np.newaxis]
+            img1 = cv2.imread(os.path.join(dir_path, '%d.png' % r_idx), cv2.IMREAD_GRAYSCALE)[:,:,np.newaxis]
         return img0, gt, img1
 
     def __getitem__(self, index):

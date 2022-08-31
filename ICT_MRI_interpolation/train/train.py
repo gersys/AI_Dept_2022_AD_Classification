@@ -50,13 +50,13 @@ def train(model, args):
     step = 0
     nr_eval = 0
     print("Make trainset")
-    dataset = NIfTIDataset(args.data_root, batch_size=args.batch_size, fold=args.fold , mode='train')
+    dataset = NIfTIDataset(args.data_root, batch_size=args.batch_size, fold=args.fold , mode='train', args = args)
     sampler = DistributedSampler(dataset)
     train_data = DataLoader(dataset, batch_size=args.batch_size, num_workers=8, pin_memory=True, drop_last=True, sampler=sampler)
     args.step_per_epoch = train_data.__len__()
 
     print("Make evalset")
-    dataset_val = NIfTIDataset(args.data_root, batch_size=args.batch_size, fold=args.fold , mode='eval')
+    dataset_val = NIfTIDataset(args.data_root, batch_size=args.batch_size, fold=args.fold , mode='eval' , args = args)
     val_data = DataLoader(dataset_val, batch_size=args.batch_size, pin_memory=True, num_workers=8)
     print('training...')
     time_stamp = time.time()
