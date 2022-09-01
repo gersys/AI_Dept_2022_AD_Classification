@@ -106,7 +106,7 @@ class Model:
             loss_percept, loss_gram = self.flownet.module.getPerceptualLoss(result, gt)	
             if training:	
                 self.optimG.zero_grad()	
-                loss_G = loss_l1 + loss_percept #+ loss_gram	
+                loss_G = loss_l1*20 + loss_percept*20 #+ loss_gram	
                 loss_G.backward()	
                 self.optimG.step()	
             return result, {'loss_l1':loss_l1}	
