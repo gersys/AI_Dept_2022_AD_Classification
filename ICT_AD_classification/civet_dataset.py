@@ -13,11 +13,27 @@ class DataFrame_wrapper():
 
 class CIVET_DATASET(Dataset):
     """
-    Civet Dataset Preprocesser.
+    -- Civet Dataset --
+    Combines 3 xlsx file.
+    1. xlsx_dataset_demo_apoe. (ex: 220420_th_with_demo.xlsx) This contains DEMO info, APOE info, and CIVET info with GT frames.
+    1. xlsx_dataset_kfold. (ex: kfold.xlsx) This contains pre-defined k-fold lists.
+    1. xlsx_dataset. This contains CIVET info with FVI generated frames.
     
-    w/ APOE: use APOE_e4
-    w/ demo: use yellow columns { binarize(성별) | normalize(검사시나이) | normalize(교육연수) }
+    -- Preprocessing List --
+    >> self.col.CIVET
+    Cingulate : z-normalize
+    Frontal : z-normalize
+    Parietal : z-normalize
+    Temporal : z-normalize
+    Occipital : z-normalize
     
+    >> col.DEMO
+    성별(sex): binarize
+    검사시나이(AGE): normalize
+    교육연수(EDU): normalize
+    
+    >> col.APOE
+    APOE_e4: None (Already binarized)
     """
     
     def __init__(self,
