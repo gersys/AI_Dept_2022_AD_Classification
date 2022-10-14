@@ -122,8 +122,8 @@ class Trainer():
         with torch.no_grad():
             for i, batch_data in enumerate(self.valid_loader):
                 # load data
-                inputs = batch_data["x"].cuda()
-                labels = batch_data["y"].cuda()
+                inputs = batch_data["x"]
+                labels = batch_data["y"]
                 
                 outputs = self.model(inputs)
 
