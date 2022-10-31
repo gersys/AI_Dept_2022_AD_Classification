@@ -1,6 +1,6 @@
 import os
 import sys
-
+from dataset.dataset import Contrast
 import cv2
 import math
 import time
@@ -22,6 +22,9 @@ device = torch.device("cuda")
 
 exp = os.path.abspath('.').split('/')[-1]
 
+
+
+    
 def get_learning_rate(step):
     if step < 2000:
         mul = step / 2000.
@@ -41,6 +44,7 @@ def flow2rgb(flow_map_np):
     return rgb_map.clip(0, 1)
 
 def train(model, args):
+    contrast = Contrast()
     local_rank = args.local_rank
     if local_rank == 0:
         writer = SummaryWriter('train')
@@ -52,7 +56,7 @@ def train(model, args):
     print("Make trainset")
     dataset = NIfTIDataset(args.data_root, batch_size=args.batch_size, fold=args.fold , mode='train', args = args)
     sampler = DistributedSampler(dataset)
-    train_data = DataLoader(dataset, batch_size=args.batch_size, num_workers=8, pin_memory=True, drop_last=True, sampler=sampler)
+    train_data = DataLoader(dataset, batch_size=args.batch_size, num_workers=1 if args.debug else 8, pin_memory=True, drop_last=True, sampler=sampler)
     args.step_per_epoch = train_data.__len__()
 
     print("Make evalset")
@@ -63,11 +67,15 @@ def train(model, args):
     for epoch in range(args.epoch):
         sampler.set_epoch(epoch)
         for i, data in enumerate(train_data):
+            
             data_time_interval = time.time() - time_stamp
             time_stamp = time.time()
             data_gpu = data.to(device, non_blocking=True) / 255.
-            imgs = data_gpu[:, :2]
-            gt = data_gpu[:, 2:3]
+            data_gpu = contrast.forward(data_gpu)
+            
+            imgs = data_gpu[:, :6, ...]
+            gt = data_gpu[:, 6:, ...]
+            
             learning_rate = get_learning_rate(step)
             pred, info = model.update(imgs, gt, learning_rate, training=True)
             learning_rate = model.optimG.param_groups[0]['lr']
@@ -85,12 +93,16 @@ def train(model, args):
             if step % 1000 == 1 and local_rank == 0 and args.model != 'FILM':
                 gt = (gt.permute(0, 2, 3, 1).detach().cpu().numpy() * 255).astype('uint8')
                 mask = (torch.cat((info['mask'], info['mask_tea']), 3).permute(0, 2, 3, 1).detach().cpu().numpy() * 255).astype('uint8')
+                
+                pred_gray = pred.mean(dim=1).unsqueeze(1)
+                pred_gray = (torch.cat([pred_gray, pred_gray, pred_gray], dim=1).permute(0, 2, 3, 1).detach().cpu().numpy() * 255).astype('uint8')
                 pred = (pred.permute(0, 2, 3, 1).detach().cpu().numpy() * 255).astype('uint8')
+                
                 merged_img = (info['merged_tea'].permute(0, 2, 3, 1).detach().cpu().numpy() * 255).astype('uint8')
                 flow0 = info['flow'].permute(0, 2, 3, 1).detach().cpu().numpy()
                 flow1 = info['flow_tea'].permute(0, 2, 3, 1).detach().cpu().numpy()
                 for i in range(2):
-                    imgs = np.concatenate((merged_img[i], pred[i], gt[i]), 1)[:, :, ::-1]
+                    imgs = np.concatenate((merged_img[i], pred[i], pred_gray[i], gt[i]), 1)[:, :, ::-1]
                     writer.add_image(str(i) + '/img', imgs, step, dataformats='HWC')
                     # writer.add_image(str(i) + '/flow', np.concatenate((flow2rgb(flow0[i]), flow2rgb(flow1[i])), 1), step, dataformats='HWC')
                     writer.add_image(str(i) + '/mask', mask[i], step, dataformats='HWC')
@@ -119,20 +131,26 @@ def train(model, args):
         dist.barrier()
 
 def evaluate(model, val_data, nr_eval, local_rank, writer_val):
+    contrast = Contrast()
     loss_l1_list = []
     loss_distill_list = []
     loss_tea_list = []
     time_stamp = time.time()
     for i, data in enumerate(val_data):
         data_gpu = data.to(device, non_blocking=True) / 255.
-        imgs = data_gpu[:, :2]
-        gt = data_gpu[:, 2:3]
+        data_gpu = contrast.forward(data_gpu)
+        
+        imgs = data_gpu[:, :6]
+        gt = data_gpu[:, 6:]
         with torch.no_grad():
             pred, info = model.update(imgs, gt, training=False)
             merged_img = info['merged_tea']
         loss_l1_list.append(info['loss_l1'].cpu().numpy())
         loss_tea_list.append(info['loss_tea'].cpu().numpy())
         loss_distill_list.append(info['loss_distill'].cpu().numpy())
+
+        pred_gray = pred.mean(dim=1).unsqueeze(1)
+        pred_gray = (torch.cat([pred_gray, pred_gray, pred_gray], dim=1).permute(0, 2, 3, 1).detach().cpu().numpy() * 255).astype('uint8')
         gt = (gt.permute(0, 2, 3, 1).cpu().numpy() * 255).astype('uint8')
         pred = (pred.permute(0, 2, 3, 1).cpu().numpy() * 255).astype('uint8')
         merged_img = (merged_img.permute(0, 2, 3, 1).cpu().numpy() * 255).astype('uint8')
@@ -140,7 +158,8 @@ def evaluate(model, val_data, nr_eval, local_rank, writer_val):
         # flow1 = info['flow_tea'].permute(0, 2, 3, 1).cpu().numpy()
         if i == 0 and local_rank == 0:
             for j in range(2):
-                imgs = np.concatenate((merged_img[j], pred[j], gt[j]), 1)[:, :, ::-1]
+                
+                imgs = np.concatenate((merged_img[j], pred[j], pred_gray[j], gt[j]), 1)[:, :, ::-1]
                 writer_val.add_image(str(j) + '/img', imgs.copy(), nr_eval, dataformats='HWC')
                 # writer_val.add_image(str(j) + '/flow', flow2rgb(flow0[j][:, :, ::-1]), nr_eval, dataformats='HWC')
     
@@ -149,7 +168,10 @@ def evaluate(model, val_data, nr_eval, local_rank, writer_val):
     if local_rank != 0:
         return
     writer_val.add_scalar('L1 loss', np.mean(loss_l1_list), nr_eval)
-        
+    
+
+    
+
 if __name__ == "__main__":    
     parser = argparse.ArgumentParser()
     parser.add_argument('--model', type=str , default='RIFE')
@@ -163,6 +185,10 @@ if __name__ == "__main__":
     parser.add_argument('--eval_root', type=str)
     parser.add_argument('--perceptual', action= 'store_true' )
     parser.add_argument('--laplacian', action= 'store_true' )
+    parser.add_argument('--adv', action= 'store_true' )
+    parser.add_argument('--contrast', action= 'store_true' )
+    parser.add_argument('--debug', action= 'store_true' )
+    
 
     args = parser.parse_args()
     
@@ -174,23 +200,24 @@ if __name__ == "__main__":
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
     torch.backends.cudnn.benchmark = True
-    model = Model(args.local_rank, gray=True, args= args)
+
+    os.environ["CUDA_VISIBLE_DEVICES"] = "2,3"
+
+
+
+    model = Model(args.local_rank, gray=False, args= args)
 
     if model == 'FILM':
         args.log_path = args.log_path +  f'/no_laplacian_film/{args.fold}'
     else:
-
-        if args.laplacian:
-            if args.perceptual:
-                args.log_path = args.log_path + f'/laplacian_perceptual/{args.fold}'
-            else:
-                args.log_path = args.log_path + f'/laplacian_no_perceptual/{args.fold}'
-        else:
-            if args.perceptual:
-                args.log_path = args.log_path + f'/no_laplacian_perceptual/{args.fold}'
-            else:
-                args.log_path = args.log_path + f'/no_laplacian_no_perceptual/{args.fold}'
-                
+        args.log_path = "_".join([
+            "lap" if args.laplacian else "no_lap",
+            "percep" if args.perceptual else "no_percep",
+            "adv" if args.perceptual else "no_adv",
+            "contrast" if args.contrast else "no_contrast",
+        ])
+        
+        
     os.makedirs(args.log_path, exist_ok=True)
     train(model, args)
         

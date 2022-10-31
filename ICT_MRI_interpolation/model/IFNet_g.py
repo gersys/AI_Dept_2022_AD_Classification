@@ -49,11 +49,16 @@ class IFBlock(nn.Module):
         tmp = self.lastconv(x)
         tmp = F.interpolate(tmp, scale_factor = scale * 2, mode="bilinear", align_corners=False)
         if tmp.shape[2] > h:
-            diff = (tmp.shape[2] - h) // 2
-            tmp = tmp[:, :, diff:-diff]
+            diff1 = (tmp.shape[2] - h) // 2
+            diff2 = (tmp.shape[2] - h) - diff1
+            tmp = tmp[:, :, diff1:-diff2]
+        
+        
         if tmp.shape[3] > w:
-            diff = (tmp.shape[3] - w) // 2
-            tmp = tmp[:, :, :, diff:-diff]
+            diff1 = (tmp.shape[3] - w) // 2
+            diff2 = (tmp.shape[3] - w) - diff1
+            tmp = tmp[:, :, :, diff1:-diff2]
+            
         flow = tmp[:, :4] * scale * 2
         mask = tmp[:, 4:5]
         return flow, mask

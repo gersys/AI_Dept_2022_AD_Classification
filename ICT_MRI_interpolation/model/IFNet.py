@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from model.warplayer import warp
 from model.refine import *
+import pdb
 
 def deconv(in_planes, out_planes, kernel_size=4, stride=2, padding=1):
     return nn.Sequential(
@@ -37,6 +38,7 @@ class IFBlock(nn.Module):
         self.lastconv = nn.ConvTranspose2d(c, 5, 4, 2, 1)
 
     def forward(self, x, flow, scale):
+        
         if scale != 1:
             x = F.interpolate(x, scale_factor = 1. / scale, mode="bilinear", align_corners=False)
         if flow != None:
@@ -46,6 +48,7 @@ class IFBlock(nn.Module):
         x = self.convblock(x) + x
         tmp = self.lastconv(x)
         tmp = F.interpolate(tmp, scale_factor = scale * 2, mode="bilinear", align_corners=False)
+        
         flow = tmp[:, :4] * scale * 2
         mask = tmp[:, 4:5]
         return flow, mask
@@ -61,9 +64,9 @@ class IFNet(nn.Module):
         self.unet = Unet()
 
     def forward(self, x, scale=[4,2,1], timestep=0.5):
-        img0 = x[:, :3]
-        img1 = x[:, 3:6]
-        gt = x[:, 6:] # In inference time, gt is None
+        img0 = x[:, :3, ...]
+        img1 = x[:, 3:6, ...]
+        gt = x[:, 6:, ...] # In inference time, gt is None
         flow_list = []
         merged = []
         mask_list = []
@@ -74,6 +77,8 @@ class IFNet(nn.Module):
         stu = [self.block0, self.block1, self.block2]
         for i in range(3):
             if flow != None:
+                
+                
                 flow_d, mask_d = stu[i](torch.cat((img0, img1, warped_img0, warped_img1, mask), 1), flow, scale=scale[i])
                 flow = flow + flow_d
                 mask = mask + mask_d
@@ -81,10 +86,13 @@ class IFNet(nn.Module):
                 flow, mask = stu[i](torch.cat((img0, img1), 1), None, scale=scale[i])
             mask_list.append(torch.sigmoid(mask))
             flow_list.append(flow)
+
             warped_img0 = warp(img0, flow[:, :2])
             warped_img1 = warp(img1, flow[:, 2:4])
             merged_student = (warped_img0, warped_img1)
             merged.append(merged_student)
+        
+        
         if gt.shape[1] == 3:
             flow_d, mask_d = self.block_tea(torch.cat((img0, img1, warped_img0, warped_img1, mask, gt), 1), flow, scale=1)
             flow_teacher = flow + flow_d
@@ -95,6 +103,9 @@ class IFNet(nn.Module):
         else:
             flow_teacher = None
             merged_teacher = None
+        
+        
+        
         for i in range(3):
             merged[i] = merged[i][0] * mask_list[i] + merged[i][1] * (1 - mask_list[i])
             if gt.shape[1] == 3:

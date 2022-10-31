@@ -3,7 +3,7 @@ import numpy as np
 import torch
 import pandas as pd
 import json
-
+7
 
 class DataFrame_wrapper():
     def __init__(self, dataframe, filename):
@@ -38,6 +38,7 @@ class CIVET_DATASET(Dataset):
     
     def __init__(self,
                  frame_type,
+                 dataset_type,
                  fold_idxs,
                  xlsx_dataset,
                  xlsx_dataset_kfold,
@@ -71,6 +72,7 @@ class CIVET_DATASET(Dataset):
         
         # dataset meta-data
         self.verbose = verbose
+        self.dataset_type = dataset_type
         self.frame_type = frame_type
         self.metadata = {
             "error_count": 0,
@@ -83,6 +85,7 @@ class CIVET_DATASET(Dataset):
             
             "unique_key": self.unique_key,
             "frame_type": self.frame_type,
+            "dataset_type": self.dataset_type,
         }
 
         # read dataset assets
@@ -101,8 +104,9 @@ class CIVET_DATASET(Dataset):
                 raise NotImplementedError(f"Unkown type for {k}. Got {type(v)}")
 
         # preprocess, merge, select k-fold ... etc
+        # self.set_unique_keys()
+        self.drop_na()
         self.collect_n_fold()
-        self.set_unique_keys()
         self.preprocess()
         self.match_k_fold()
 
@@ -141,20 +145,42 @@ class CIVET_DATASET(Dataset):
 
     def collect_n_fold(self):
         
-        # concat all cols in kfold.xlsx w.r.t self.metadata["fold_idx"]
+        # set unique keys
+        self.dataframes["dataset"][self.unique_key] = self.dataframes["dataset"]["Cth"].apply(self.get_unique_key_fn)
+        self.dataframes["dataset_demo_apoe"][self.unique_key] = self.dataframes["dataset_demo_apoe"]["Cth"].apply(self.get_unique_key_fn)
+        
+        
+        # if fold_idxs>0, select only unique_keys from that fold (for test, validation sets)
+        if self.dataset_type == "test":
+            self.dataframes["dataset_kfold"] = self.dataframes["dataset_kfold"][str(self.metadata["fold_idxs"])]
+            self.dataframes["dataset_kfold"] = self.dataframes["dataset_kfold"].to_frame(self.unique_key)
+            self.dataframes["dataset_kfold"][self.unique_key] = self.dataframes["dataset_kfold"][self.unique_key].apply(self.get_unique_key_fn)
 
-        self.dataframes["dataset_kfold"] = pd.concat([self.dataframes["dataset_kfold"][str(idx)] for idx in self.metadata["fold_idxs"]])
+        # if fold_idxs<0, select all unique_keys from gt dataset, except for that fold (for train sets)
+        elif self.dataset_type == "train":
+            to_remove = self.dataframes["dataset_kfold"][str(self.metadata["fold_idxs"])].apply(self.get_unique_key_fn)
+            self.dataframes["dataset_kfold"] = \
+                self.dataframes["dataset_demo_apoe"][~self.dataframes["dataset_demo_apoe"][self.unique_key].isin(to_remove)]
+            self.dataframes["dataset_kfold"] = self.dataframes["dataset_kfold"][self.unique_key].to_frame(self.unique_key)
+        else:
+            raise NotImplementedError(f"Unknown dataset_type. Got {self.dataset_type}")
+
+    def drop_na(self):
+        # remove row if it contains error
+        self.dataframes["dataset_demo_apoe"].dropna(axis=0, how="any", inplace=True)  # drop any row(axis=0) where nan exists
+        self.dataframes["dataset_kfold"].dropna(axis=0, how="any", inplace=True)  # drop any row(axis=0) where nan exists
+
+        len_prev = len(self.dataframes["dataset"].index)
+        self.dataframes["dataset"].dropna(axis=0, how="any", inplace=True)  # drop any row(axis=0) where nan exists
+        self.metadata["error_count"] = len_prev - len(self.dataframes["dataset"].index)  # how many nans (=errors)
+
 
 
     def preprocess(self):
         
         self.verbose_print("preprocessing")
         
-        # remove row if it contains error
-        len_prev = len(self.dataframes["dataset"].index)
-        self.dataframes["dataset"].dropna(axis=0, how="any", inplace=True)  # drop any row(axis=0) where nan exists
-        self.metadata["error_count"] = len_prev - len(self.dataframes["dataset"].index)  # how many nans (=errors)
-    
+        
         
         # merge dataset (without demo, apoe) with dataset_with_demo_apoe.
         
@@ -254,9 +280,10 @@ def preload_xlsx(filename, verbose=True)->DataFrame_wrapper:
             dataframe = pd.read_excel(
                 io=filename.split("@")[0],
                 sheet_name=filename.split("@")[1],
+                engine="openpyxl"
             )
         else:
-            dataframe = pd.read_excel(filename)
+            dataframe = pd.read_excel(filename, engine="openpyxl")
     
     else:
         raise NotImplementedError(f"Unknown type of filename. Got {type(filename)} ")
@@ -269,23 +296,21 @@ def define_dataset(xlsx_dataset, xlsx_dataset_kfold, xlsx_dataset_demo_apoe, fra
     
     # define k-fold. ex: train [0, 1, 3, 4] / val [2]
     k_fold_idx, n_fold = fold.split("@")
-    train_k_fold_idxs = set([i for i in range(int(n_fold))])
-    train_k_fold_idxs.remove(int(k_fold_idx))
-    train_k_fold_idxs = list((train_k_fold_idxs))
-    valid_k_fold_idxs = [int(k_fold_idx)]
     
     
     train_dataset = CIVET_DATASET(
-        frame_type=frame_type,
-        fold_idxs=train_k_fold_idxs,
-        xlsx_dataset=xlsx_dataset,
+        frame_type="GT", #frame_type,
+        dataset_type="train",
+        fold_idxs=k_fold_idx,
+        xlsx_dataset=xlsx_dataset_demo_apoe,
         xlsx_dataset_kfold=xlsx_dataset_kfold,
         xlsx_dataset_demo_apoe=xlsx_dataset_demo_apoe,
         verbose=False
     )
     valid_dataset = CIVET_DATASET(
         frame_type=frame_type,
-        fold_idxs=valid_k_fold_idxs,
+        dataset_type="test",
+        fold_idxs=k_fold_idx,
         xlsx_dataset=xlsx_dataset,
         xlsx_dataset_kfold=xlsx_dataset_kfold,
         xlsx_dataset_demo_apoe=xlsx_dataset_demo_apoe,

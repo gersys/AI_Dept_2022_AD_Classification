@@ -206,11 +206,12 @@ if __name__=="__main__":
     # path_like_str or Dataframe_wrapper
     xlsx_dataset_list = [
         preloaded["xlsx_dataset_demo_apoe"],
-        *[f"./dataset/20221011/linear_221011.xlsx@linear_x{i}" for i in [2, 4, 8, 16, 32]],
-        *[f"./dataset/20221011/laplacian_no_perceptual_221005.xlsx@laplacian_no_perceptual_x{i}" for i in [2, 4, 8, 16, 32]],
+        # *[f"./dataset/20221011/linear_221011.xlsx@linear_x{i}" for i in [2, 4, 8, 16, 32]],
+        # *[f"./dataset/20221011/laplacian_no_perceptual_221005.xlsx@laplacian_no_perceptual_x{i}" for i in [2, 4, 8, 16, 32]],
+        *[f"./dataset/20221011/3_laplacian_perceptual.xlsx@x{i}" for i in [2, 4, 8, 16, 32]],
     ]
 
-    logger = Logger("log.csv")
+    logger = Logger("log_20221028.csv")
     for file_sheet_name in xlsx_dataset_list:
         for classifier_type in ["SVM", "MLP", ]:
             for training_columns in ["CIVET", "CIVET+DEMO", "CIVET+APOE", "CIVET+APOE+DEMO"]:
@@ -259,6 +260,3 @@ if __name__=="__main__":
                             f"| valid_len: {len(trainer.valid_loader.dataset.x):5d}"  # valid_data_len
                         )
 
-
-                            
-                            
