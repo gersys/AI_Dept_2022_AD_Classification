@@ -1,5 +1,6 @@
 import os
 import sys
+sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from dataset.dataset import Contrast
 import cv2
 import math
@@ -10,7 +11,7 @@ import numpy as np
 import random
 import argparse
 from torch.nn.parallel import DistributedDataParallel as DDP
-sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
+
 
 from model.RIFE import Model
 from dataset.dataset import *
