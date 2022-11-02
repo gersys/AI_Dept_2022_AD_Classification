@@ -32,6 +32,7 @@ class Model:
             elif gray:
                 self.flownet = IFNet_g(args=args)
             else:
+                print("Starting with IFNet (Not Gray)")
                 self.flownet = IFNet()
         
         self.model = args.model
@@ -45,7 +46,7 @@ class Model:
             else :
                 parms_optim.append(v)
 
-        self.optimG = AdamW(parms_optim, lr=1e-6, weight_decay=1e-2) # use large weight decay may avoid NaN loss
+        self.optimG = AdamW(parms_optim, lr=2e-6, weight_decay=1e-2) # use large weight decay may avoid NaN loss
         self.epe = EPE()
         self.lap = LapLoss()
         self.mse = nn.MSELoss()
@@ -89,12 +90,14 @@ class Model:
     def update(self, imgs, gt, learning_rate=0, mul=1, training=True, flow_gt=None):
         # for param_group in self.optimG.param_groups:
         #     param_group['lr'] = learning_rate
+        
+        
         if self.gray:
             img0 = imgs[:, :1]
             img1 = imgs[:, 1:]
         else:
-            img0 = imgs[:, :3]
-            img1 = imgs[:, 3:]
+            img0 = imgs[:, :3, ...]
+            img1 = imgs[:, 3:, ...]
         if training:
             self.train()
         else:
@@ -110,7 +113,7 @@ class Model:
                 loss_G.backward()	
                 self.optimG.step()	
             return result, {'loss_l1':loss_l1}	
-        else:	
+        else:
             flow, mask, merged, flow_teacher, merged_teacher, loss_distill = self.flownet(torch.cat((imgs, gt), 1), scale=[4, 2, 1])
 
 
